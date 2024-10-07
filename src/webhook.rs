@@ -48,10 +48,11 @@ impl WebhookActor {
             .send()
             .await?;
 
-        if res.status() != 200 {
-            error!(target: "app::webhook", "Could not send webhook: {}", res.status());
+        let status = res.status();
+        if status != 200 {
+            error!(target: "app::webhook", "Could not send webhook: {}", status);
 
-            return Err(anyhow!("Invalid status code: {}!", res.status()));
+            return Err(anyhow!("Invalid status code: {}!", status));
         }
 
         info!(target: "app::webhook", "Relayed message via webhook to {}", self.destination);
