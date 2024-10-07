@@ -10,5 +10,5 @@ dotenvy = "0.15.7"
 env_logger = "0.11.5"
 futures-util = "0.3.31"
 log = { version = "0.4.22", features = ["kv"] }
-reqwest = { version = "0.12.8", features = ["brotli", "deflate", "gzip", "native-tls-alpn", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12.8", features = ["brotli", "deflate", "gzip", "http2", "native-tls-alpn", "rustls-tls"], default-features = false }
 tokio = { version = "1.40.0", features = ["macros", "rt", "rt-multi-thread"] }
