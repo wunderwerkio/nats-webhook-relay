@@ -30,6 +30,10 @@ in
 
     buildInputs = with pkgs; [
       openssl
+    ] ++ lib.optionals (system == "aarch64-darwin") [
+      darwin.apple_sdk.frameworks.CoreFoundation
+      darwin.apple_sdk.frameworks.CoreServices
+      darwin.apple_sdk.frameworks.SystemConfiguration
     ];
 
     doCheck = false;
