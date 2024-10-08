@@ -13,13 +13,13 @@ in {
     package = mkPackageOptionMD inputs.self.packages.${system} "nextjs-cache-relay" {};
 
     user = mkOption {
-      default = "nextcacherelay";
       type = types.str;
+      default = "nextcacherelay";
     };
 
     group = mkOption {
-      default = "nextcacherelay";
       type = types.str;
+      default = "nextcacherelay";
     };
 
     webhookDestination = mkOption {
@@ -36,6 +36,11 @@ in {
 
     natsPassword = mkOption {
       type = types.str;
+    };
+
+    natsRelaySubject = mkOption {
+      type = types.str;
+      default = "nextjs";
     };
 
     log = mkOption {
@@ -55,6 +60,7 @@ in {
         NATS_HOST = cfg.natsHost;
         NATS_USER = cfg.natsUser;
         NATS_PASS = cfg.natsPassword;
+        NATS_RELAY_SUBJECT = cfg.natsRelaySubject;
         RUST_LOG = cfg.log;
       };
 

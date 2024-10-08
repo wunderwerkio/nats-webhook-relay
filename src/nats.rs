@@ -4,11 +4,11 @@ use futures_util::StreamExt;
 use async_nats::{Client, ConnectOptions, Message};
 use log::{debug, error, info};
 
-use crate::{message::CacheMessage, webhook::WebhookActorHandle};
+use crate::webhook::WebhookActorHandle;
 
 pub struct NatsClient {
     client: Client,
-    webhook_host: String,
+    relay_subject: String,
     webhook_handle: WebhookActorHandle,
 }
 
@@ -17,7 +17,7 @@ impl NatsClient {
         url: &str,
         user: &str,
         pass: &str,
-        webhook_host: &str,
+        relay_subject: String,
         webhook_handle: WebhookActorHandle,
     ) -> Self {
         info!(target: "app::nats", "Connecting to NATS at {}", url);
@@ -47,7 +47,7 @@ impl NatsClient {
 
         Self {
             client,
-            webhook_host: webhook_host.to_string(),
+            relay_subject,
             webhook_handle,
         }
     }
@@ -56,20 +56,10 @@ impl NatsClient {
         let sub = message.subject.to_string();
         info!(target: "app::nats", "Incoming message {sub}");
 
-        let parsed_msg: CacheMessage = match message.clone().try_into() {
+        let msg_str = match String::from_utf8(message.payload.into()) {
             Ok(v) => v,
             Err(err) => {
-                error!(target: "app::nats", "Could not decode message: {err}");
-                return;
-            }
-        };
-
-        let parsed_msg = parsed_msg.with_origin(self.webhook_host.clone());
-
-        let msg_payload = match serde_json::to_string(&parsed_msg) {
-            Ok(v) => v,
-            Err(err) => {
-                error!(target: "app::nats", "Could not encode message: {err}");
+                error!(target: "app::nats", "Could not decode message payload: {err}");
                 return;
             }
         };
@@ -77,19 +67,19 @@ impl NatsClient {
         // Send received message via webhook to next.js.
         if let Err(_) = self
             .webhook_handle
-            .send_webhook_event(msg_payload.clone())
+            .send_webhook_event(msg_str.clone())
             .await
         {
             return;
         }
 
         // Re-publish the message on a new subject.
-        self.publish_relayed_message(&message.subject, msg_payload)
+        self.publish_relayed_message(&message.subject, msg_str)
             .await
     }
 
     async fn publish_relayed_message(&self, subject: &str, body: String) {
-        let sub = subject.replace("cms", "nextjs");
+        let sub = subject.replace("cms", &self.relay_subject);
 
         if let Err(err) = self.client.publish(sub.clone(), body.into()).await {
             error!(target: "app::nats", "Could not publish {sub}: {err}");
