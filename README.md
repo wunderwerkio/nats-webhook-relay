@@ -1,6 +1,6 @@
-# Next.js Cache Relay
+# NATS Webhook Relay
 
-The Next.js Cache Relay is a program that connects to a NATS server and listens
+The NATS Webhook Relay is a program that connects to a NATS server and listens on
 a specific subject. Whenever a message is published on that subject, the message
 is sent to a URL via Webhook POST request. Additionally the same message is
 re-published under a new subject after the Webhook request was successfully sent.
@@ -8,8 +8,10 @@ re-published under a new subject after the Webhook request was successfully sent
 ## Why is this needed?
 
 A decoupled stack offers a lot of flexibility due to the backend and frontend being
-separated. This means for example, that a local Next.js installation can connect
+separated. This means for example, that a local frontend can connect
 to a preview or production backend.
+
+### Example for Next.js
 
 When using Next.js's cache for `fetch` requests, those cached responses must be somehow
 invalidated. This is typically done by sending a webhook from the backend to the
@@ -23,7 +25,7 @@ development machine.
 
 The actual webhook is then dispatched by the relay, which can reach the local deployment.
 
-## Race conditions
+#### Race conditions
 
 Whenever an action from the backend leads to cache invalidation in Next.js
 the following two actions need to be executed:
@@ -41,7 +43,7 @@ the cache before informing the browser.
 To achieve this the relay republishes the original message under a new subject
 **after** the webhook was sent successfully.
 
-![Diagram](assets/nextjs-cache-relay-diagram.png?raw=true "Diagram")
+![Diagram](assets/diagram.png?raw=true "Diagram")
 
 ## Configuration
 
@@ -50,12 +52,13 @@ Dotenv files (`.env` and `.env.local`) files are loaded automatically.
 
 |Variable|Description|Example|
 |--------|-----------|-------|
-|WEBHOOK_DESTINATION|URL to where to send the webhook to. This should be an endpoint of your Next.js app that handles the cache invalidation.|`http://localhost:3000/api/cache/webhook`|
+|WEBHOOK_DESTINATION|URL to where to send the webhook to. This should be an endpoint of your frontend app that handles the cache invalidation.|`http://localhost:3000/api/cache/webhook`|
 |NATS_HOST|NATS server connect url, must start with `nats://` protocol.|`nats://my-natsserver.com`|
 |NATS_USER|Username for NATS server.|`user`|
 |NATS_PASS|Password for NATS server.|`pass`|
 |NATS_SUBJECT_PREFIX|Subject prefix to listen on.|`cms.cache`|
 |NATS_RELAYED_SUBJECT_PREFIX|Rewritten relayed subject prefox to republish the message on.|`relayed.cache`|
+|RUST_LOG|Log configuration. See [https://docs.rs/env_logger/latest/env_logger/](env_logger crate).|`info`|
 
 > [!NOTE]
 > The relay subscribes to all child subjects via `NATS_SUBJECT_PREFIX`
@@ -77,21 +80,36 @@ Run `nix build` to build the package that is bundled via `flake.nix`.
 
 ## Server use
 
-Add the flake from this repo as an input on the nixos server.
+Add the flake from this repo as an input on your NixOS server.
 
 Import the nix module and configure it:
 
-```nix
+```nix filename="flake.nix"
+{
+    inputs = {
+        # ...
+        nats-webhook-relay.url = "github:wunderwerkio/nats-webhook-relay";
+        nats-webhook-relay.inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    outputs = {
+        # ...
+    };
+}
+
+```
+
+```nix filename="configuration.nix"
 { inputs, ...}: {
     imports = [
-        inputs.nextjs-cache-relay.nixosModules.default
+        inputs.nats-webhook-relay.nixosModules.default
     ];
 
-    services.nextjs-cache-relay = {
+    services.nats-webhook-relay = {
         enable = true;
 
         webhookDestination = "https://my-domain.com/api/cache/webhook";
-        natsHost = "nats://my-nats:4222";
+        natsAddress = "nats://my-nats";
         natsUser = "user";
         natsPassword = "password";
         natsSubjectPrefix = "cms.cache";

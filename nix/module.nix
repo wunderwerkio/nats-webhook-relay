@@ -2,31 +2,36 @@ inputs: {
   lib,
   pkgs,
   config,
+  cargoToml,
   ...
 }: with lib; let
-  cfg = config.services.nextjs-cache-relay;
+  cfg = config.services."${cargoToml.package.name}";
+  defaultUser = "natswebhookrelay";
+  defaultGroup = "natswebhookrelay";
+
   inherit (pkgs.stdenv.hostPlatform) system;
 in {
-  options.services.nextjs-cache-relay = {
-    enable = mkEnableOption (mdDoc "Next.js Cache Relay");
+  # Service configuration. 
+  options.services."${cargoToml.package.name}" = {
+    enable = mkEnableOption (mdDoc "NATS Webhook Relay");
 
-    package = mkPackageOptionMD inputs.self.packages.${system} "nextjs-cache-relay" {};
+    package = mkPackageOptionMD inputs.self.packages.${system} cargo.package.name {};
 
     user = mkOption {
       type = types.str;
-      default = "nextcacherelay";
+      default = defaultUser;
     };
 
     group = mkOption {
       type = types.str;
-      default = "nextcacherelay";
+      default = defaultGroup;
     };
 
     webhookDestination = mkOption {
       type = types.str;
     };
 
-    natsHost = mkOption {
+    natsAddress = mkOption {
       type = types.str;
     };
 
@@ -38,9 +43,12 @@ in {
       type = types.str;
     };
 
-    natsRelaySubject = mkOption {
+    natsSubjectPrefix = mkOption {
       type = types.str;
-      default = "nextjs";
+    };
+
+    natsRelayedSubjectPrefix = mkOption {
+      type = types.str;
     };
 
     log = mkOption {
@@ -49,28 +57,36 @@ in {
     };
   };
 
+  # System config.
   config = mkIf cfg.enable {
+    # Add package.
     systemd.packages = [ cfg.package ];
-    systemd.services."nextjs-cache-relay" = {
+
+    # Add systemd service.
+    systemd.services.${cargoToml.package.name} = {
+      # Network is required.
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
 
+      # Configure program by env vars.
       environment = {
         WEBHOOK_DESTINATION = cfg.webhookDestination;
-        NATS_HOST = cfg.natsHost;
+        NATS_ADDRESS = cfg.natsAddress;
         NATS_USER = cfg.natsUser;
         NATS_PASS = cfg.natsPassword;
-        NATS_RELAY_SUBJECT = cfg.natsRelaySubject;
+        NATS_SUBJECT_PREFIX = cfg.natsSubjectPrefix;
+        NATS_RELAYED_SUBJECT_PREFIX = cfg.natsRelayedSubjectPrefix;
         RUST_LOG = cfg.log;
       };
 
+      # Hardened service config.
       serviceConfig = {
-        ExecStart = "${cfg.package}/bin/nextjs-cache-relay";
+        ExecStart = "${cfg.package}/bin/${cargoToml.package.name}";
         User = cfg.user;
         Group = cfg.group;
         Restart = "on-failure";
         RestartSec = "5s";
-        RuntimeDirectory = "nextjs-cache-relay";
+        RuntimeDirectory = cargoToml.package.name;
         RuntimeDirectoryMode = "0755";
         ProtectSystem = "strict";
         ProtectHome = true;
@@ -93,15 +109,17 @@ in {
       };
     };
 
-    users.users = optionalAttrs (cfg.user == "nextcacherelay") {
-      "nextcacherelay" = {
+    # Add system user if default is used.
+    users.users = optionalAttrs (cfg.user == defaultUser) {
+      "${defaultUser}" = {
         isSystemUser = true;
         group = cfg.group;
       };
     };
 
-    users.groups = optionalAttrs (cfg.group == "nextcacherelay") {
-      "nextcacherelay" = {};
+    # Add system group if default is used.
+    users.groups = optionalAttrs (cfg.group == defaultGroup) {
+      "${defaultGroup}" = {};
     };
   };
 }

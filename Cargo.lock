@@ -875,7 +875,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nextjs-cache-relay"
+name = "nats-webhook-relay"
 version = "0.1.0"
 dependencies = [
  "anyhow",

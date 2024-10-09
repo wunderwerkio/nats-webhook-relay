@@ -10,9 +10,13 @@
     nixpkgs,
     flake-utils,
     rust-overlay,
-  } @ inputs: {
+  } @ inputs: let 
+    cargoToml = (builtins.fromTOML (builtins.readFile ./Cargo.toml));
+  in({
     nixosModules= {
-      default = import ./nix/module.nix inputs;
+      default = import ./nix/module.nix inputs {
+        inherit cargoToml;
+      };
     };
   } // flake-utils.lib.eachDefaultSystem (system:
     let
@@ -32,18 +36,17 @@
       };
 
       package = import ./nix/package.nix {
-        inherit pkgs rustPlatform;
+        inherit pkgs rustPlatform cargoToml;
       };
     in {
       packages = {
         default = package;
-        nextjs-cache-relay = package;
+        "${cargoToml.package.name}" = package;
       };
 
       devShells = rec {
         default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
-            #cmake
             pkg-config
             rust
           ];
@@ -51,6 +54,7 @@
           buildInputs = with pkgs; [
             openssl
           ] ++ lib.optionals (system == "aarch64-darwin") [
+            # Framework dependencies on Apple Silicon.
             darwin.apple_sdk.frameworks.CoreFoundation
             darwin.apple_sdk.frameworks.CoreServices
             darwin.apple_sdk.frameworks.SystemConfiguration
@@ -60,5 +64,5 @@
 
       formatter = pkgs.alejandra;
     }
-  );
+  ));
 }

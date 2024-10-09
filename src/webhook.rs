@@ -10,6 +10,7 @@ enum ActorMessage {
     },
 }
 
+/// The actor struct.
 struct WebhookActor {
     receiver: mpsc::Receiver<ActorMessage>,
 
@@ -18,7 +19,10 @@ struct WebhookActor {
 }
 
 impl WebhookActor {
+    /// Create new WebhookActor.
     fn new(receiver: mpsc::Receiver<ActorMessage>, destination: String) -> Self {
+        // Create the HTTP client.
+        // Add support for compression and set a user agent.
         let client = Client::builder()
             .gzip(true)
             .brotli(true)
@@ -39,7 +43,13 @@ impl WebhookActor {
         }
     }
 
-    pub async fn send_webhook_event(&self, payload: String) -> anyhow::Result<()> {
+    /// Send given `payload` as webhook.
+    ///
+    /// Payload is expected to be valid JSON.
+    /// Request is sent via POST as `application/json`.
+    ///
+    /// Success status code is expected to be 200.
+    pub async fn send_webhook(&self, payload: String) -> anyhow::Result<()> {
         let res = self
             .client
             .post(self.destination.clone())
@@ -60,41 +70,54 @@ impl WebhookActor {
         Ok(())
     }
 
+    /// Handle actor messages.
     async fn handle_message(&mut self, msg: ActorMessage) {
         match msg {
             ActorMessage::SendEventWebhook {
                 payload,
                 respond_to,
             } => {
-                let res = self.send_webhook_event(payload).await;
+                let res = self.send_webhook(payload).await;
                 _ = respond_to.send(res);
             }
         }
     }
 }
 
+/// Run the actor and listen for actor messages.
 async fn run_actor(mut actor: WebhookActor) {
     while let Some(msg) = actor.receiver.recv().await {
         actor.handle_message(msg).await;
     }
 }
 
+/// The actor handle.
+/// Can be used safely across thread boundaries.
+/// Just clone the handle.
 #[derive(Clone)]
 pub struct WebhookActorHandle {
     sender: mpsc::Sender<ActorMessage>,
 }
 
 impl WebhookActorHandle {
+    /// Create new webhook actor handle.
     pub fn new(destination: String) -> Self {
         let (sender, receiver) = mpsc::channel(8);
         let actor = WebhookActor::new(receiver, destination);
 
+        // Spawn the single actor instance.
         tokio::spawn(run_actor(actor));
 
         Self { sender }
     }
 
-    pub async fn send_webhook_event(&self, payload: String) -> anyhow::Result<()> {
+    /// Send given `payload` as webhook.
+    ///
+    /// Payload is expected to be valid JSON.
+    /// Request is sent via POST as `application/json`.
+    ///
+    /// Success status code is expected to be 200.
+    pub async fn send_webhook(&self, payload: String) -> anyhow::Result<()> {
         let (tx, rx) = oneshot::channel();
         let msg = ActorMessage::SendEventWebhook {
             payload,
