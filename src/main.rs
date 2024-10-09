@@ -42,7 +42,7 @@ async fn main() {
     env_logger::builder().format_timestamp(None).init();
 
     info!(target: "app", "Starting {} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    info!(target: "app", "NATS messages at {}.> will be relayed to {} and republished under the {}.> subject", webhook_destination, nats_subject_prefix, nats_relayed_subject_prefix);
+    info!(target: "app", "NATS messages at {}.> will be relayed to {} and republished under the {}.> subject", nats_subject_prefix, webhook_destination, nats_relayed_subject_prefix);
 
     // Start app.
     let webhook_handle = WebhookActorHandle::new(webhook_destination.to_string());
