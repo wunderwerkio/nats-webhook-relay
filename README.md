@@ -85,6 +85,7 @@ Add the flake from this repo as an input on your NixOS server.
 Import the nix module and configure it:
 
 ```nix filename="flake.nix"
+# flake.nix
 {
     inputs = {
         # ...
@@ -100,6 +101,7 @@ Import the nix module and configure it:
 ```
 
 ```nix filename="configuration.nix"
+# configuration.nix
 { inputs, ...}: {
     imports = [
         inputs.nats-webhook-relay.nixosModules.default
