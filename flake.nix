@@ -14,8 +14,8 @@
     cargoToml = (builtins.fromTOML (builtins.readFile ./Cargo.toml));
   in({
     nixosModules= {
-      default = import ./nix/module.nix inputs {
-        inherit cargoToml;
+      default = import ./nix/module.nix {
+        inherit inputs cargoToml;
       };
     };
   } // flake-utils.lib.eachDefaultSystem (system:

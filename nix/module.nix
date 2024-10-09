@@ -1,8 +1,7 @@
-inputs: {
+{ inputs, cargoToml }: {
   lib,
   pkgs,
   config,
-  cargoToml,
   ...
 }: with lib; let
   cfg = config.services."${cargoToml.package.name}";
@@ -15,7 +14,7 @@ in {
   options.services."${cargoToml.package.name}" = {
     enable = mkEnableOption (mdDoc "NATS Webhook Relay");
 
-    package = mkPackageOptionMD inputs.self.packages.${system} cargo.package.name {};
+    package = mkPackageOptionMD inputs.self.packages.${system} cargoToml.package.name {};
 
     user = mkOption {
       type = types.str;
