@@ -14,7 +14,7 @@ in {
   options.services."${cargoToml.package.name}" = {
     enable = mkEnableOption (mdDoc "NATS Webhook Relay");
 
-    package = mkPackageOptionMD inputs.self.packages.${system} cargoToml.package.name {};
+    package = mkPackageOption inputs.self.packages.${system} cargoToml.package.name {};
 
     user = mkOption {
       type = types.str;
