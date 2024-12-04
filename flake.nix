@@ -1,14 +1,14 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    utils.url = "github:wunderwerkio/nix-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
   outputs = {
     self,
     nixpkgs,
-    flake-utils,
+    utils,
     rust-overlay,
   } @ inputs: let 
     cargoToml = (builtins.fromTOML (builtins.readFile ./Cargo.toml));
@@ -18,7 +18,7 @@
         inherit inputs cargoToml;
       };
     };
-  } // flake-utils.lib.eachDefaultSystem (system:
+  } // utils.lib.systems.eachDefault (system:
     let
       overlays = [
         (import rust-overlay)
@@ -27,7 +27,6 @@
         inherit system overlays;
       };
       rustToolchain = ./rust-toolchain.toml;
-      libPath = pkgs.lib.makeLibraryPath [ pkgs.openssl ];
       rust = (pkgs.rust-bin.fromRustupToolchainFile rustToolchain);
 
       rustPlatform = pkgs.makeRustPlatform {
@@ -44,7 +43,7 @@
         "${cargoToml.package.name}" = package;
       };
 
-      devShells = rec {
+      devShells = {
         default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
             pkg-config
