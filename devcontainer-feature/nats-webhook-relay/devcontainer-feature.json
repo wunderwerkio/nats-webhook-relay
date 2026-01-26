@@ -1,0 +1,59 @@
+{
+    "id": "nats-webhook-relay",
+    "version": "0.1.0",
+    "name": "NATS Webhook Relay",
+    "description": "Background service that relays NATS messages to webhooks. Useful for local development with remote NATS servers.",
+    "documentationURL": "https://github.com/wunderwerkio/nats-webhook-relay",
+    "options": {
+        "version": {
+            "type": "string",
+            "default": "latest",
+            "description": "Release version to install (e.g., '0.1.0' or 'latest')"
+        },
+        "webhookDestination": {
+            "type": "string",
+            "default": "http://localhost:3000/api/cache/webhook",
+            "description": "URL to send webhook POST requests"
+        },
+        "natsAddress": {
+            "type": "string",
+            "default": "",
+            "description": "NATS server URL (e.g., nats://my-server.com)"
+        },
+        "natsUser": {
+            "type": "string",
+            "default": "",
+            "description": "NATS username"
+        },
+        "natsPass": {
+            "type": "string",
+            "default": "",
+            "description": "NATS password"
+        },
+        "natsSubjectPrefix": {
+            "type": "string",
+            "default": "cms.cache",
+            "description": "Subject prefix to listen on (subscribes to prefix.>)"
+        },
+        "natsRelayedSubjectPrefix": {
+            "type": "string",
+            "default": "relayed.cache",
+            "description": "Subject prefix for republished messages"
+        },
+        "logLevel": {
+            "type": "string",
+            "default": "info",
+            "proposals": ["trace", "debug", "info", "warn", "error"],
+            "description": "Log level (RUST_LOG)"
+        },
+        "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Start relay automatically at container start"
+        }
+    },
+    "entrypoint": "/usr/local/share/nats-webhook-relay-init.sh",
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
