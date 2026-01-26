@@ -1,0 +1,27 @@
+name: Publish Devcontainer Feature
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "devcontainer-feature/**"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish to GHCR
+        uses: devcontainers/action@v1
+        with:
+          publish-features: "true"
+          base-path-to-features: "./devcontainer-feature"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

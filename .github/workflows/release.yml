@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: blacksmith-16vcpu-ubuntu-2404
+          - target: aarch64-unknown-linux-gnu
+            os: blacksmith-16vcpu-ubuntu-2404-arm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build binary
+        run: cargo build --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nats-webhook-relay-${{ matrix.target }}
+          path: target/release/nats-webhook-relay
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir release
+          for dir in artifacts/nats-webhook-relay-*; do
+            target=$(basename "$dir" | sed 's/nats-webhook-relay-//')
+            cp "$dir/nats-webhook-relay" "release/nats-webhook-relay-$target"
+          done
+          chmod +x release/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
