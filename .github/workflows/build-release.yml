@@ -12,10 +12,22 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
+  VERSION: ${{ github.event.release.name }}
 
 jobs:
+  strip-version:
+    name: Strip Version Prefix
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    outputs:
+      version: ${{ steps.strip.outputs.version }}
+    steps:
+      - name: Strip v prefix
+        id: strip
+        run: echo "version=${VERSION#v}" >> "$GITHUB_OUTPUT"
+
   build-arm64:
     name: Build ARM64
+    needs: [strip-version]
     runs-on: blacksmith-16vcpu-ubuntu-2404-arm
     permissions:
       contents: read
@@ -37,11 +49,12 @@ jobs:
         with:
           platforms: linux/arm64
           file: Dockerfile
-          tags: ghcr.io/wunderwerkio/nats-webhook-relay:arm64-${{ github.event.release.name }}
+          tags: ghcr.io/wunderwerkio/nats-webhook-relay:arm64-${{ needs.strip-version.outputs.version }}
           push: true
 
   build-x86:
     name: Build X64
+    needs: [strip-version]
     runs-on: blacksmith-16vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -63,13 +76,13 @@ jobs:
         with:
           platforms: linux/amd64
           file: Dockerfile
-          tags: ghcr.io/wunderwerkio/nats-webhook-relay:x64-${{ github.event.release.name }}
+          tags: ghcr.io/wunderwerkio/nats-webhook-relay:x64-${{ needs.strip-version.outputs.version }}
           push: true
 
   combine-images:
     name: Combine Images
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
-    needs: [build-arm64, build-x86]
+    needs: [strip-version, build-arm64, build-x86]
     permissions:
       contents: read
       packages: write
@@ -82,12 +95,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Combine images
-        run: docker buildx imagetools create ghcr.io/wunderwerkio/nats-webhook-relay:x64-${{ github.event.release.name }} ghcr.io/wunderwerkio/nats-webhook-relay:arm64-${{ github.event.release.name }} --tag ghcr.io/wunderwerkio/nats-webhook-relay:${{ github.event.release.name }}
+        run: docker buildx imagetools create ghcr.io/wunderwerkio/nats-webhook-relay:x64-${{ needs.strip-version.outputs.version }} ghcr.io/wunderwerkio/nats-webhook-relay:arm64-${{ needs.strip-version.outputs.version }} --tag ghcr.io/wunderwerkio/nats-webhook-relay:${{ needs.strip-version.outputs.version }}
 
   publish-helm-chart:
     name: Publish Helm Chart
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
-    needs: [combine-images]
+    needs: [strip-version, combine-images]
     permissions:
       contents: read
       packages: write
@@ -103,5 +116,5 @@ jobs:
       - name: Package and Push Chart
         run: |
           helm package helm/nats-webhook-relay \
-            --app-version ${{ github.event.release.name }}
+            --app-version ${{ needs.strip-version.outputs.version }}
           helm push nats-webhook-relay-*.tgz oci://ghcr.io/wunderwerkio/charts
