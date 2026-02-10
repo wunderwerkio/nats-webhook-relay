@@ -1,0 +1,48 @@
+# Build artifacts
+target/
+**/target/
+
+# Git
+.git/
+.gitignore
+
+# Nix
+*.nix
+flake.nix
+flake.lock
+result
+result-*
+nix/
+
+# CI/CD
+.github/
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Test files
+tests/
+
+# Helm
+helm/
+
+# Devcontainer feature
+devcontainer-feature/
+
+# Other
+*.log
+.DS_Store
+assets/
