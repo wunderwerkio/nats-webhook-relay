@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nats-webhook-relay.fullname" . }}
+  labels:
+    {{- include "nats-webhook-relay.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "nats-webhook-relay.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nats-webhook-relay.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "nats-webhook-relay.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: WEBHOOK_DESTINATION
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "nats-webhook-relay.fullname" . }}-config
+                  key: WEBHOOK_DESTINATION
+            - name: NATS_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "nats-webhook-relay.fullname" . }}-config
+                  key: NATS_ADDRESS
+            - name: NATS_SUBJECT_PREFIX
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "nats-webhook-relay.fullname" . }}-config
+                  key: NATS_SUBJECT_PREFIX
+            - name: NATS_RELAYED_SUBJECT_PREFIX
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "nats-webhook-relay.fullname" . }}-config
+                  key: NATS_RELAYED_SUBJECT_PREFIX
+            {{- if .Values.config.rustLog }}
+            - name: RUST_LOG
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "nats-webhook-relay.fullname" . }}-config
+                  key: RUST_LOG
+            {{- end }}
+            - name: NATS_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nats-webhook-relay.secretName" . }}
+                  key: NATS_USER
+            - name: NATS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nats-webhook-relay.secretName" . }}
+                  key: NATS_PASS
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+      {{- if .Values.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.topologySpreadConstraints.maxSkew }}
+          topologyKey: {{ .Values.topologySpreadConstraints.topologyKey }}
+          whenUnsatisfiable: {{ .Values.topologySpreadConstraints.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              {{- include "nats-webhook-relay.selectorLabels" . | nindent 14 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

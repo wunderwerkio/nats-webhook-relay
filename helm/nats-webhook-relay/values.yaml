@@ -1,0 +1,68 @@
+# Default values for nats-webhook-relay.
+
+image:
+  repository: ghcr.io/wunderwerkio/nats-webhook-relay
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Spread pods across nodes
+topologySpreadConstraints:
+  enabled: false
+  maxSkew: 1
+  topologyKey: kubernetes.io/hostname
+  whenUnsatisfiable: ScheduleAnyway
+
+# Application configuration
+config:
+  webhookDestination: "" # REQUIRED
+  natsAddress: "nats://nats:4222"
+  natsSubjectPrefix: "" # REQUIRED
+  natsRelayedSubjectPrefix: "" # REQUIRED
+  rustLog: "info"
+
+# Secrets configuration
+# Use either existingSecret OR secrets (not both)
+secrets:
+  # Use an existing secret instead of creating one
+  existingSecret: ""
+
+  # If existingSecret is empty, these values are used to create secrets
+  # WARNING: For production, use existingSecret or external secret management
+  natsUser: ""
+  natsPassword: ""

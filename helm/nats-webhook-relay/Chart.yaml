@@ -1,0 +1,11 @@
+apiVersion: v2
+name: nats-webhook-relay
+description: NATS to webhook forwarder service
+type: application
+version: 0.1.0
+appVersion: "0.1.0" # Is set by CI/CD pipeline
+maintainers:
+  - name: wunderwerk software GmbH
+home: https://github.com/wunderwerkio/nats-webhook-relay
+sources:
+  - https://github.com/wunderwerkio/nats-webhook-relay
