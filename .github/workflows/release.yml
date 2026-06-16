@@ -1,17 +1,19 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [created]
 
 env:
   CARGO_TERM_COLOR: always
+  BIN: nats-webhook-relay
 
 jobs:
   build:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -20,6 +22,8 @@ jobs:
             os: blacksmith-16vcpu-ubuntu-2404
           - target: aarch64-unknown-linux-gnu
             os: blacksmith-16vcpu-ubuntu-2404-arm
+          - target: aarch64-apple-darwin
+            os: blacksmith-6vcpu-macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -30,38 +34,14 @@ jobs:
       - name: Build binary
         run: cargo build --release
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nats-webhook-relay-${{ matrix.target }}
-          path: target/release/nats-webhook-relay
-
-  release:
-    name: Create Release
-    needs: build
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Prepare release files
+      - name: Package tarball
         run: |
-          mkdir release
-          for dir in artifacts/nats-webhook-relay-*; do
-            target=$(basename "$dir" | sed 's/nats-webhook-relay-//')
-            cp "$dir/nats-webhook-relay" "release/nats-webhook-relay-$target"
-          done
-          chmod +x release/*
+          tar -C target/release -czf \
+            "$BIN-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz" "$BIN"
 
-      - name: Create GitHub Release
+      - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
-          generate_release_notes: true
+          files: ${{ env.BIN }}-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
